@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Planner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0f1117;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;padding:16px;}
+.section{display:none;}
+.section.active{display:block;animation:fadeIn .2s;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* HOME */
+.home-header{text-align:center;padding:2rem 0 2rem;}
+.home-header h1{font-size:clamp(22px,5vw,30px);font-weight:700;color:#fff;}
+.home-header p{font-size:14px;color:#64748b;margin-top:6px;}
+.cards-grid{display:flex;flex-direction:column;gap:14px;max-width:480px;margin:0 auto;}
+.home-card{border-radius:14px;padding:1.25rem;cursor:pointer;border:1px solid #1e2535;background:#161b27;text-align:left;display:flex;align-items:center;gap:14px;transition:transform .15s,border-color .15s;width:100%;}
+.home-card:active{transform:scale(.98);}
+.hc-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.hc-label{font-size:16px;font-weight:600;color:#f1f5f9;}
+.hc-desc{font-size:12px;color:#64748b;margin-top:3px;line-height:1.4;}
+.card-cal .hc-icon{background:#0d2a3a;}
+.card-cal:hover{border-color:#378ADD;}
+.card-todo .hc-icon{background:#0d3a2e;}
+.card-todo:hover{border-color:#1D9E75;}
+.card-reminder .hc-icon{background:#3a1a0d;}
+.card-reminder:hover{border-color:#D85A30;}
+
+/* NAV */
+.back-btn{background:none;border:1px solid #2a3145;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer;color:#94a3b8;margin-bottom:1.25rem;display:inline-flex;align-items:center;gap:6px;}
+.back-btn:hover{background:#1e2535;color:#e2e8f0;}
+.section-title{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+
+/* CALENDAR */
+.cal-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+.cal-top h2{font-size:18px;font-weight:700;color:#fff;}
+.cal-nav-btn{background:#161b27;border:1px solid #2a3145;border-radius:8px;color:#94a3b8;font-size:18px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cal-nav-btn:hover{background:#1e2535;color:#fff;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-day-hdr{text-align:center;font-size:11px;font-weight:600;color:#475569;padding:6px 0;text-transform:uppercase;}
+.cal-cell{aspect-ratio:1;border-radius:8px;border:1px solid #1e2535;background:#161b27;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:4px;cursor:pointer;transition:border-color .15s;overflow:hidden;min-width:0;}
+.cal-cell:hover{border-color:#378ADD;}
+.cal-cell.empty{background:transparent;border-color:transparent;cursor:default;}
+.cal-cell.today .cal-num{background:#378ADD;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.cal-cell.blocked-full{background:#3a0d0d;border-color:#E24B4A;}
+.cal-cell.has-slots{background:#0d2030;border-color:#185FA5;}
+.cal-cell.perm-blocked{background:#1a1a3a;border-color:#534AB7;}
+.cal-cell.blocked-full.perm-blocked{background:#3a0d3a;border-color:#D4537E;}
+.cal-num{font-size:clamp(11px,2vw,13px);font-weight:500;color:#cbd5e1;line-height:22px;}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:#E24B4A;margin-top:2px;flex-shrink:0;}
+.cal-dot.blue{background:#378ADD;}
+.cal-dot.purple{background:#7F77DD;}
+.cal-label{font-size:9px;color:#F0997B;text-align:center;line-height:1.2;margin-top:1px;word-break:break-word;max-width:100%;overflow:hidden;}
+
+/* PERM BOOKINGS BTN */
+.perm-btn{background:#1a1a3a;border:1px solid #534AB7;border-radius:10px;padding:10px 16px;color:#AFA9EC;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:1rem;display:flex;align-items:center;gap:8px;width:100%;}
+.perm-btn:hover{background:#2d1f5e;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#161b27;border:1px solid #2a3145;border-radius:16px;padding:1.5rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;}
+.modal h3{font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:1rem;}
+.modal-close{float:right;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;margin-top:-4px;}
+.modal-close:hover{color:#fff;}
+.form-group{margin-bottom:12px;}
+.form-group label{display:block;font-size:12px;color:#64748b;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:#0f1117;border:1px solid #2a3145;border-radius:8px;padding:10px 12px;font-size:14px;color:#e2e8f0;}
+.form-group input::placeholder,.form-group textarea::placeholder{color:#475569;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#378ADD;}
+.form-group select option{background:#161b27;}
+.form-group textarea{resize:vertical;min-height:70px;}
+.btn-row{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap;}
+.btn{border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;border:none;flex:1;}
+.btn-blue{background:#185FA5;color:#fff;}
+.btn-blue:hover{background:#378ADD;}
+.btn-red{background:#A32D2D;color:#fff;}
+.btn-red:hover{background:#E24B4A;}
+.btn-gray{background:#1e2535;color:#94a3b8;border:1px solid #2a3145;}
+.btn-gray:hover{background:#2a3145;}
+.btn-green{background:#0F6E56;color:#fff;}
+.btn-green:hover{background:#1D9E75;}
+.btn-purple{background:#3C3489;color:#fff;}
+.btn-purple:hover{background:#7F77DD;}
+.radio-group{display:flex;gap:10px;}
+.radio-opt{flex:1;border:1px solid #2a3145;border-radius:8px;padding:10px;cursor:pointer;text-align:center;font-size:13px;color:#94a3b8;transition:all .15s;}
+.radio-opt.active{border-color:#378ADD;background:#0d2030;color:#85B7EB;}
+.time-row{display:flex;gap:8px;align-items:center;}
+.time-row input{flex:1;}
+.time-row span{color:#64748b;font-size:13px;}
+
+/* TIME SLOTS LIST */
+.slot-item{background:#0f1117;border:1px solid #1e2535;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.slot-name{font-size:13px;font-weight:600;color:#f1f5f9;}
+.slot-time{font-size:12px;color:#64748b;margin-top:2px;}
+.slot-del{background:none;border:none;color:#475569;cursor:pointer;font-size:16px;}
+.slot-del:hover{color:#E24B4A;}
+
+/* DAY MODAL */
+.day-view-title{font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:4px;}
+.day-view-sub{font-size:12px;color:#64748b;margin-bottom:1rem;}
+.block-type-row{display:flex;gap:8px;margin-bottom:1rem;}
+.full-day-banner{background:#3a0d0d;border:1px solid #E24B4A;border-radius:8px;padding:12px;margin-bottom:1rem;}
+.full-day-banner .fdb-name{font-size:14px;font-weight:600;color:#F09595;}
+.full-day-banner .fdb-sub{font-size:12px;color:#A32D2D;margin-top:3px;}
+
+/* PERM MODAL */
+.perm-item{background:#0f1117;border:1px solid #1e2535;border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+.perm-item-top{display:flex;justify-content:space-between;align-items:center;}
+.perm-item-name{font-size:13px;font-weight:600;color:#AFA9EC;}
+.perm-item-days{font-size:11px;color:#64748b;margin-top:3px;}
+.perm-item-time{font-size:11px;color:#64748b;}
+.days-picker{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.day-chip{border:1px solid #2a3145;border-radius:20px;padding:5px 12px;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s;}
+.day-chip.active{background:#2d1f5e;border-color:#7F77DD;color:#AFA9EC;}
+
+/* TODO */
+.todo-add{display:flex;gap:8px;margin-bottom:1rem;}
+.todo-add input{flex:1;background:#161b27;border:1px solid #2a3145;border-radius:8px;padding:11px 14px;font-size:15px;color:#e2e8f0;}
+.todo-add input::placeholder{color:#475569;}
+.todo-add input:focus{outline:none;border-color:#1D9E75;}
+.todo-add button{background:#1D9E75;color:#fff;border:none;border-radius:8px;padding:11px 16px;font-size:15px;cursor:pointer;font-weight:600;}
+.todo-item{display:flex;align-items:center;gap:12px;padding:14px;border-radius:10px;background:#161b27;margin-bottom:8px;border:1px solid #1e2535;}
+.todo-item input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:#1D9E75;flex-shrink:0;}
+.todo-item label{font-size:15px;color:#cbd5e1;flex:1;cursor:pointer;line-height:1.4;}
+.empty{text-align:center;padding:2.5rem;color:#475569;font-size:13px;}
+
+/* REMINDERS */
+.remind-item{background:#161b27;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid #1e2535;}
+.ri-date{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.ri-name{font-size:14px;font-weight:600;color:#f1f5f9;}
+.ri-time{font-size:12px;color:#94a3b8;margin-top:3px;}
+.ri-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;margin-top:5px;font-weight:600;}
+.ri-badge.full{background:#3a0d0d;color:#F09595;}
+.ri-badge.slot{background:#0d2030;color:#85B7EB;}
+.ri-badge.perm{background:#2d1f5e;color:#AFA9EC;}
+.no-remind{text-align:center;padding:3rem;color:#475569;}
+.no-remind .nr-icon{font-size:36px;margin-bottom:10px;}
+
+/* LOADING */
+.loading{text-align:center;padding:2rem;color:#64748b;font-size:13px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1D9E75;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HOME -->
+<div id="home" class="section active">
+  <div class="home-header">
+    <h1>My Planner</h1>
+    <p>Stay organised, stay on top</p>
+  </div>
+  <div class="cards-grid">
+    <button class="home-card card-cal" onclick="show('calendar')">
+      <div class="hc-icon">📅</div>
+      <div><div class="hc-label">Calendar</div><div class="hc-desc">Block days, schedule time slots</div></div>
+    </button>
+    <button class="home-card card-todo" onclick="show('todo')">
+      <div class="hc-icon">✅</div>
+      <div><div class="hc-label">To-Do List</div><div class="hc-desc">Tasks that stay until you tick them</div></div>
+    </button>
+    <button class="home-card card-reminder" onclick="show('reminders')">
+      <div class="hc-icon">🔔</div>
+      <div><div class="hc-label">Reminders</div><div class="hc-desc">Your next 7 days at a glance</div></div>
+    </button>
+  </div>
+</div>
+
+<!-- CALENDAR -->
+<div id="calendar" class="section">
+  <button class="back-btn" onclick="show('home')">← Back</button>
+  <button class="perm-btn" onclick="openPermModal()">
+    <span>🔁</span> Permanent Bookings (repeating every week)
+  </button>
+  <div class="cal-top">
+    <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <h2 id="cal-title"></h2>
+    <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+</div>
+
+<!-- TODO -->
+<div id="todo" class="section">
+  <button class="back-btn" onclick="show('home')">← Back</button>
+  <div class="section-title">✅ To-Do List</div>
+  <div class="todo-add">
+    <input id="td-input" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTodo()"/>
+    <button onclick="addTodo()">+ Add</button>
+  </div>
+  <div id="td-list"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- REMINDERS -->
+<div id="reminders" class="section">
+  <button class="back-btn" onclick="show('home')">← Back</button>
+  <div class="section-title">🔔 Next 7 Days</div>
+  <div id="remind-list"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- DAY MODAL -->
+<div class="modal-overlay" id="day-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('day-modal')">✕</button>
+    <div class="day-view-title" id="dm-title"></div>
+    <div class="day-view-sub" id="dm-sub"></div>
+    <div id="dm-full-banner"></div>
+    <div id="dm-slots-list"></div>
+    <div id="dm-perm-list"></div>
+    <hr style="border-color:#1e2535;margin:12px 0;"/>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Add a booking</div>
+    <div class="block-type-row">
+      <div class="radio-opt active" id="rt-full" onclick="setBlockType('full')">🔴 Block full day</div>
+      <div class="radio-opt" id="rt-slot" onclick="setBlockType('slot')">🕐 Block time slot</div>
+    </div>
+    <div id="dm-full-form">
+      <div class="form-group">
+        <label>Reason / Event name</label>
+        <input id="dm-reason" placeholder="e.g. Gaur Poornima Celebrations"/>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-red" onclick="blockFullDay()">Block Full Day</button>
+        <button class="btn btn-gray" onclick="closeModal('day-modal')">Cancel</button>
+      </div>
+    </div>
+    <div id="dm-slot-form" style="display:none;">
+      <div class="form-group">
+        <label>Event name</label>
+        <input id="dm-slot-name" placeholder="e.g. Team Meeting"/>
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <div class="time-row">
+          <input type="time" id="dm-slot-start"/>
+          <span>to</span>
+          <input type="time" id="dm-slot-end"/>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-blue" onclick="addTimeSlot()">Add Slot</button>
+        <button class="btn btn-gray" onclick="closeModal('day-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PERM MODAL -->
+<div class="modal-overlay" id="perm-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('perm-modal')">✕</button>
+    <h3>🔁 Permanent Bookings</h3>
+    <div id="perm-list" style="margin-bottom:1rem;"></div>
+    <hr style="border-color:#1e2535;margin-bottom:1rem;"/>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Add new permanent booking</div>
+    <div class="form-group">
+      <label>Name</label>
+      <input id="perm-name" placeholder="e.g. Weekly Meeting"/>
+    </div>
+    <div class="form-group">
+      <label>Days of the week</label>
+      <div class="days-picker" id="days-picker">
+        <div class="day-chip" data-d="0">Sun</div>
+        <div class="day-chip" data-d="1">Mon</div>
+        <div class="day-chip" data-d="2">Tue</div>
+        <div class="day-chip" data-d="3">Wed</div>
+        <div class="day-chip" data-d="4">Thu</div>
+        <div class="day-chip" data-d="5">Fri</div>
+        <div class="day-chip" data-d="6">Sat</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Time</label>
+      <div class="time-row">
+        <input type="time" id="perm-start"/>
+        <span>to</span>
+        <input type="time" id="perm-end"/>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-purple" onclick="addPerm()">+ Add Permanent Booking</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = 'https://uvkpmmtbndwwcprlohmv.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2a3BtbXRibmR3d2NwcmxvaG12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MzQyMDgsImV4cCI6MjA5MDAxMDIwOH0.wBRenPe17X5xEe6gMq8mz4JoDT3blSwoyEojB_bw8xA';
+
+const HDR = {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
+
+async function sbGet(table, query=''){
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {headers:{...HDR,'Prefer':'return=representation'}});
+  return r.json();
+}
+async function sbPost(table, body){
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {method:'POST',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});
+  return r.json();
+}
+async function sbPatch(table, query, body){
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {method:'PATCH',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});
+  return r.json();
+}
+async function sbDelete(table, query){
+  await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {method:'DELETE',headers:HDR});
+}
+
+// State
+let curYear, curMonth, calData={}, permBookings=[], todos=[];
+let selDateKey=null, blockType='full';
+
+function dateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function today(){const n=new Date();return {y:n.getFullYear(),m:n.getMonth(),d:n.getDate()};}
+function fmtTime(t){if(!t)return '';const[h,m]=t.split(':');const hr=parseInt(h);return `${hr>12?hr-12:hr||12}:${m} ${hr>=12?'PM':'AM'}`;}
+function fmtDateLabel(key){const[y,m,d]=key.split('-');const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return `${parseInt(d)} ${months[parseInt(m)-1]} ${y}`;}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+function show(sec){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(sec).classList.add('active');
+  window.scrollTo(0,0);
+  if(sec==='calendar') renderCal();
+  if(sec==='todo') loadTodos();
+  if(sec==='reminders') loadReminders();
+}
+
+// ---- CALENDAR ----
+async function initCal(){
+  const t=today();
+  curYear=t.y; curMonth=t.m;
+  await loadCalData();
+  await loadPerms();
+}
+
+async function loadCalData(){
+  const data = await sbGet('calendar_days','select=*');
+  calData={};
+  if(Array.isArray(data)) data.forEach(r=>calData[r.day_key]=r);
+}
+
+async function loadPerms(){
+  const data = await sbGet('perm_bookings','select=*');
+  permBookings = Array.isArray(data)?data:[];
+}
+
+function changeMonth(d){
+  curMonth+=d;
+  if(curMonth>11){curMonth=0;curYear++;}
+  if(curMonth<0){curMonth=11;curYear--;}
+  renderCal();
+}
+
+function getPermForDate(dateStr){
+  const dow = new Date(dateStr).getDay();
+  return permBookings.filter(p=>p.days && p.days.includes(dow));
+}
+
+function renderCal(){
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-title').textContent=`${months[curMonth]} ${curYear}`;
+  const grid=document.getElementById('cal-grid');
+  const t=today();
+  const firstDow=new Date(curYear,curMonth,1).getDay();
+  const daysInMonth=new Date(curYear,curMonth+1,0).getDate();
+  let html='';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>html+=`<div class="cal-day-hdr">${d}</div>`);
+  for(let i=0;i<firstDow;i++) html+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const key=dateKey(curYear,curMonth,d);
+    const rec=calData[key];
+    const perms=getPermForDate(key);
+    const isToday=t.y===curYear&&t.m===curMonth&&t.d===d;
+    let cls='cal-cell';
+    if(rec?.full_day) cls+=' blocked-full';
+    else if(rec?.slots?.length) cls+=' has-slots';
+    if(perms.length && !rec?.full_day) cls+=' perm-blocked';
+    if(isToday) cls+=' today';
+    let inner=`<div class="cal-num">${d}</div>`;
+    if(rec?.full_day) inner+=`<div class="cal-label">${rec.full_day_name||'Blocked'}</div>`;
+    else if(rec?.slots?.length) inner+=`<div class="cal-dot blue"></div>`;
+    if(perms.length && !rec?.full_day) inner+=`<div class="cal-dot purple"></div>`;
+    html+=`<div class="${cls}" onclick="openDayModal('${key}',${d})">${inner}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
+// ---- DAY MODAL ----
+function openDayModal(key, d){
+  selDateKey=key;
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dow=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dt=new Date(key);
+  document.getElementById('dm-title').textContent=`${dow[dt.getDay()]}, ${d} ${months[curMonth]} ${curYear}`;
+  document.getElementById('dm-sub').textContent='What would you like to do on this day?';
+  renderDayModal(key);
+  setBlockType('full');
+  document.getElementById('dm-reason').value='';
+  document.getElementById('dm-slot-name').value='';
+  document.getElementById('dm-slot-start').value='';
+  document.getElementById('dm-slot-end').value='';
+  document.getElementById('day-modal').classList.add('open');
+}
+
+function renderDayModal(key){
+  const rec=calData[key];
+  const perms=getPermForDate(key);
+  // full day banner
+  const banner=document.getElementById('dm-full-banner');
+  if(rec?.full_day){
+    banner.innerHTML=`<div class="full-day-banner"><div class="fdb-name">🔴 ${rec.full_day_name||'Full Day Blocked'}</div><div class="fdb-sub">This entire day is blocked</div><button class="btn btn-gray" style="margin-top:8px;font-size:12px;padding:6px 12px;" onclick="unblockFullDay('${key}')">Remove block</button></div>`;
+  } else banner.innerHTML='';
+
+  // slots
+  const slotsList=document.getElementById('dm-slots-list');
+  const slots=rec?.slots||[];
+  if(slots.length){
+    slotsList.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Booked slots</div>'+
+    slots.map((s,i)=>`<div class="slot-item"><div><div class="slot-name">${s.name}</div><div class="slot-time">${fmtTime(s.start)} – ${fmtTime(s.end)}</div></div><button class="slot-del" onclick="delSlot('${key}',${i})">✕</button></div>`).join('');
+  } else slotsList.innerHTML='';
+
+  // perm
+  const permList=document.getElementById('dm-perm-list');
+  if(perms.length && !rec?.full_day){
+    permList.innerHTML='<div style="font-size:12px;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Recurring bookings</div>'+
+    perms.map(p=>`<div class="slot-item"><div><div class="slot-name" style="color:#AFA9EC;">🔁 ${p.name}</div><div class="slot-time">${fmtTime(p.start_time)} – ${fmtTime(p.end_time)}</div></div><button class="slot-del" onclick="removePermForDay('${key}','${p.id}')">✕</button></div>`).join('');
+  } else permList.innerHTML='';
+}
+
+function setBlockType(t){
+  blockType=t;
+  document.getElementById('rt-full').classList.toggle('active',t==='full');
+  document.getElementById('rt-slot').classList.toggle('active',t==='slot');
+  document.getElementById('dm-full-form').style.display=t==='full'?'block':'none';
+  document.getElementById('dm-slot-form').style.display=t==='slot'?'block':'none';
+}
+
+async function blockFullDay(){
+  const name=document.getElementById('dm-reason').value.trim()||'Blocked';
+  const existing=calData[selDateKey];
+  if(existing){
+    await sbPatch('calendar_days',`day_key=eq.${selDateKey}`,{full_day:true,full_day_name:name});
+  } else {
+    await sbPost('calendar_days',{day_key:selDateKey,full_day:true,full_day_name:name,slots:[]});
+  }
+  await loadCalData();
+  renderCal();
+  renderDayModal(selDateKey);
+  showToast('Day blocked!');
+}
+
+async function unblockFullDay(key){
+  await sbPatch('calendar_days',`day_key=eq.${key}`,{full_day:false,full_day_name:null});
+  await loadCalData();
+  renderCal();
+  renderDayModal(key);
+  showToast('Block removed');
+}
+
+async function addTimeSlot(){
+  const name=document.getElementById('dm-slot-name').value.trim();
+  const start=document.getElementById('dm-slot-start').value;
+  const end=document.getElementById('dm-slot-end').value;
+  if(!name||!start||!end){showToast('Fill in all fields!');return;}
+  if(start>=end){showToast('End time must be after start!');return;}
+  const existing=calData[selDateKey];
+  const slots=existing?.slots||[];
+  // check overlap
+  for(const s of slots){
+    if(!(end<=s.start||start>=s.end)){showToast('This overlaps with an existing slot!');return;}
+  }
+  slots.push({name,start,end});
+  if(existing){
+    await sbPatch('calendar_days',`day_key=eq.${selDateKey}`,{slots});
+  } else {
+    await sbPost('calendar_days',{day_key:selDateKey,full_day:false,full_day_name:null,slots});
+  }
+  await loadCalData();
+  renderCal();
+  renderDayModal(selDateKey);
+  document.getElementById('dm-slot-name').value='';
+  document.getElementById('dm-slot-start').value='';
+  document.getElementById('dm-slot-end').value='';
+  showToast('Slot added!');
+}
+
+async function delSlot(key,idx){
+  const slots=calData[key].slots.filter((_,i)=>i!==idx);
+  await sbPatch('calendar_days',`day_key=eq.${key}`,{slots});
+  await loadCalData();
+  renderCal();
+  renderDayModal(key);
+  showToast('Slot removed');
+}
+
+async function removePermForDay(dateKey, permId){
+  // Add this date as an exception for this perm booking
+  const perm=permBookings.find(p=>p.id===permId);
+  if(!perm) return;
+  const exceptions=perm.exceptions||[];
+  exceptions.push(dateKey);
+  await sbPatch('perm_bookings',`id=eq.${permId}`,{exceptions});
+  await loadPerms();
+  renderCal();
+  renderDayModal(dateKey);
+  showToast('Removed for this day only');
+}
+
+function getPermForDate(dateStr){
+  const dow=new Date(dateStr+'T00:00:00').getDay();
+  return permBookings.filter(p=>{
+    if(!p.days||!p.days.includes(dow)) return false;
+    if(p.exceptions&&p.exceptions.includes(dateStr)) return false;
+    return true;
+  });
+}
+
+// ---- PERM BOOKINGS ----
+function openPermModal(){
+  renderPermList();
+  document.getElementById('perm-modal').classList.add('open');
+}
+
+function renderPermList(){
+  const el=document.getElementById('perm-list');
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  if(!permBookings.length){el.innerHTML='<div class="empty" style="padding:1rem">No permanent bookings yet.</div>';return;}
+  el.innerHTML=permBookings.map(p=>`<div class="perm-item">
+    <div class="perm-item-top">
+      <div class="perm-item-name">🔁 ${p.name}</div>
+      <button class="slot-del" onclick="deletePerm('${p.id}')">✕</button>
+    </div>
+    <div class="perm-item-days">${(p.days||[]).map(d=>days[d]).join(', ')}</div>
+    <div class="perm-item-time">${fmtTime(p.start_time)} – ${fmtTime(p.end_time)}</div>
+  </div>`).join('');
+}
+
+let selectedDays=[];
+document.querySelectorAll('.day-chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    const d=parseInt(c.dataset.d);
+    if(selectedDays.includes(d)) selectedDays=selectedDays.filter(x=>x!==d);
+    else selectedDays.push(d);
+    c.classList.toggle('active',selectedDays.includes(d));
+  });
+});
+
+async function addPerm(){
+  const name=document.getElementById('perm-name').value.trim();
+  const start=document.getElementById('perm-start').value;
+  const end=document.getElementById('perm-end').value;
+  if(!name||!selectedDays.length||!start||!end){showToast('Fill all fields and pick at least one day!');return;}
+  await sbPost('perm_bookings',{name,days:selectedDays,start_time:start,end_time:end,exceptions:[]});
+  await loadPerms();
+  renderPermList();
+  renderCal();
+  document.getElementById('perm-name').value='';
+  document.getElementById('perm-start').value='';
+  document.getElementById('perm-end').value='';
+  selectedDays=[];
+  document.querySelectorAll('.day-chip').forEach(c=>c.classList.remove('active'));
+  showToast('Permanent booking added!');
+}
+
+async function deletePerm(id){
+  await sbDelete('perm_bookings',`id=eq.${id}`);
+  await loadPerms();
+  renderPermList();
+  renderCal();
+  showToast('Deleted');
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ---- TODO ----
+async function loadTodos(){
+  const data=await sbGet('todos','select=*&order=created_at.asc');
+  todos=Array.isArray(data)?data:[];
+  renderTodos();
+}
+
+function renderTodos(){
+  const el=document.getElementById('td-list');
+  if(!todos.length){el.innerHTML='<div class="empty">Nothing here yet — add your first task!</div>';return;}
+  el.innerHTML=todos.map(t=>`<div class="todo-item">
+    <input type="checkbox" id="chk${t.id}" onchange="completeTodo('${t.id}')"/>
+    <label for="chk${t.id}">${t.text}</label>
+  </div>`).join('');
+}
+
+async function addTodo(){
+  const v=document.getElementById('td-input').value.trim();
+  if(!v) return;
+  await sbPost('todos',{text:v});
+  document.getElementById('td-input').value='';
+  await loadTodos();
+  showToast('Task added!');
+}
+
+async function completeTodo(id){
+  await sbDelete('todos',`id=eq.${id}`);
+  await loadTodos();
+  showToast('Task done! ✓');
+}
+
+// ---- REMINDERS ----
+async function loadReminders(){
+  await loadCalData();
+  await loadPerms();
+  const el=document.getElementById('remind-list');
+  const items=[];
+  const now=new Date(); now.setHours(0,0,0,0);
+  for(let i=0;i<7;i++){
+    const d=new Date(now); d.setDate(d.getDate()+i);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const rec=calData[key];
+    if(rec?.full_day) items.push({key,type:'full',name:rec.full_day_name||'Full Day Blocked',time:''});
+    (rec?.slots||[]).forEach(s=>items.push({key,type:'slot',name:s.name,time:`${fmtTime(s.start)} – ${fmtTime(s.end)}`}));
+    getPermForDate(key).forEach(p=>items.push({key,type:'perm',name:p.name,time:`${fmtTime(p.start_time)} – ${fmtTime(p.end_time)}`}));
+  }
+  if(!items.length){
+    el.innerHTML='<div class="no-remind"><div class="nr-icon">🎉</div><p>No engagements in the next 7 days!</p></div>';
+    return;
+  }
+  el.innerHTML=items.map(it=>`<div class="remind-item">
+    <div class="ri-date">${fmtDateLabel(it.key)}</div>
+    <div class="ri-name">${it.name}</div>
+    ${it.time?`<div class="ri-time">${it.time}</div>`:''}
+    <span class="ri-badge ${it.type==='full'?'full':it.type==='perm'?'perm':'slot'}">${it.type==='full'?'Full Day':it.type==='perm'?'Recurring':'Time Slot'}</span>
+  </div>`).join('');
+}
+
+// ---- INIT ----
+async function init(){
+  // create tables via SQL if needed — just init calendar
+  await initCal();
+}
+
+init();
+</script>
+</body>
+</html>
